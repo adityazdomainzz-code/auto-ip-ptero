@@ -1,0 +1,36 @@
+info:
+  name: "MC Manager"
+  identifier: "mcmanager"
+  description: "Plugin manager (Modrinth, Hangar, Spigot) and player manager (kick, ban, op, whitelist) for Minecraft servers."
+  version: "1.0.0"
+  target: "beta-2026-08"
+  author: "HikeNodes"
+  icon: 'resources/icon.png'
+  website: 'https://github.com/adityazdomainzz-code/auto-ip-ptero'
+
+admin:
+  view: 'resources/views/admin.blade.php'
+  controller: ''
+  css: ''
+  wrapper: ''
+
+dashboard:
+  css: ''
+  wrapper: ''
+  components: 'resources/scripts/components'
+
+data:
+  directory: ''
+  public: ''
+  console: ''
+
+requests:
+  views: ''
+  app: 'app'
+  routers:
+    application: ''
+    client: ''
+    web: 'routes/web.php'
+
+database:
+  migrations: ''

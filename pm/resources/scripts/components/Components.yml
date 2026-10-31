@@ -1,0 +1,4 @@
+Navigation:
+  Routes:
+    - { Name: 'Plugins', Path: '/mcplugins', Type: 'server', Component: 'server/mcmanager/PluginsContainer', AdminOnly: 'false' }
+    - { Name: 'Players', Path: '/mcplayers', Type: 'server', Component: 'server/mcmanager/PlayersContainer', AdminOnly: 'false' }

@@ -52,3 +52,24 @@ DNS records already created in Cloudflare are left untouched.
 | `resources/views/layouts/admin.blade.php` | sidebar link after *Nests* (between `auto-ip-ptero` markers) |
 
 The installer saves the originals of the two edited files to `.autoip-backup/` in the panel folder.
+
+---
+
+# MC Manager (plugin + player manager)
+
+A Blueprint extension in the `pm/` folder, installed with its own script:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/adityazdomainzz-code/auto-ip-ptero/main/pm.sh)
+# remove: bash <(curl -fsSL https://raw.githubusercontent.com/adityazdomainzz-code/auto-ip-ptero/main/pm.sh) --remove
+```
+
+Needs [Blueprint](https://blueprint.zip). Every server gets two new tabs:
+
+- **Plugins**: search **Modrinth**, **Hangar (PaperMC)** and **SpigotMC** and install with one click. The loader and Minecraft version are detected from the egg. Enable, disable or delete installed plugins. Fabric/Forge servers get mods in `/mods`.
+- **Players**: online players (server list ping), kick, ban, unban, op, de-op, and whitelist on/off/add/remove. It also shows the operator, whitelist and ban lists.
+
+Security:
+- Download URLs are looked up by the panel itself and never taken from the browser.
+- Only files from `cdn.modrinth.com`, `hangarcdn.papermc.io` and `spiget.org` are written, and only `.jar` files up to 100 MB.
+- Every action checks the user's server permissions (files / console).
