@@ -78,7 +78,7 @@ step 5 "Database + cache"
 cd "$PANEL" || die "cannot enter $PANEL"
 chown -R "$OWNER:$OWNER" "$PANEL"
 if [ -z "${AUTOIP_SKIP_ARTISAN:-}" ]; then
-  sudo -u "$OWNER" php artisan migrate --force --path=database/migrations/2026_10_31_000000_create_autoip_dns_records_table.php 2>&1 | tail -2 || die "migration failed"
+  sudo -u "$OWNER" php artisan migrate --force --path=database/migrations/2026_10_31_000000_create_autoip_dns_records_table.php --path=database/migrations/2026_10_31_000001_add_prev_alias_to_autoip_dns_records.php 2>&1 | tail -3 || die "migration failed"
   sudo -u "$OWNER" php artisan optimize:clear >/dev/null 2>&1
   sudo -u "$OWNER" php artisan queue:restart >/dev/null 2>&1 || true
   ok "table created, cache cleared"

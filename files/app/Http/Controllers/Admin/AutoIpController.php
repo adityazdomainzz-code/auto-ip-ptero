@@ -88,7 +88,7 @@ class AutoIpController extends Controller
         return redirect()->route('admin.autoip.index');
     }
 
-    /** create addresses for servers that were made before the extension was set up */
+    /** existing servers: create missing addresses + show the address in the panel instead of the IP */
     public function sync(): RedirectResponse
     {
         if (!$this->dns->active()) {
@@ -96,9 +96,18 @@ class AutoIpController extends Controller
         }
         $records = (new RecordStore())->all();
         $provider = app()->getProvider(AutoIpServiceProvider::class);
-        $done = 0;
+        $created = 0;
+        $updated = 0;
         $failed = [];
-        foreach (Server::query()->whereNotIn('id', array_keys($records))->get() as $server) {
+        foreach (Server::query()->get() as $server) {
+            if (isset($records[$server->id])) {
+                if ($provider->applyAlias((int) $server->id)) {
+                    $updated++;
+                } else {
+                    $failed[] = "{$server->name}: no allocation";
+                }
+                continue;
+            }
             try {
                 $this->dns->assertAvailable((string) $server->name, (int) $server->id);
             } catch (DisplayException $e) {
@@ -107,12 +116,12 @@ class AutoIpController extends Controller
             }
             $r = $provider->registerFor((int) $server->id);
             if ($r['ok']) {
-                $done++;
+                $created++;
             } else {
                 $failed[] = "{$server->name}: {$r['error']}";
             }
         }
-        $this->alert->success("Created addresses for {$done} server(s).")->flash();
+        $this->alert->success("Done: {$created} new address(es) created, {$updated} existing server(s) now show their address in the panel.")->flash();
         if ($failed) {
             $this->alert->warning('Skipped: ' . implode(' | ', array_slice($failed, 0, 8)))->flash();
         }

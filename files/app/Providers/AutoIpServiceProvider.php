@@ -3,6 +3,7 @@
 namespace Pterodactyl\Providers;
 
 use Pterodactyl\Models\Server;
+use Pterodactyl\Models\Allocation;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -60,6 +61,7 @@ class AutoIpServiceProvider extends ServiceProvider
         Server::updated(function (Server $server) {
             if ($server->wasChanged('name') && $this->dns()->hostnameFor((string) $server->name) !== $this->dns()->hostnameOf((int) $server->id)) {
                 $this->afterCommit($server, function () use ($server) {
+                    $this->restoreAlias((int) $server->id);
                     $this->dns()->remove((int) $server->id);
                     $this->registerFor($server->id);
                 });
@@ -67,6 +69,7 @@ class AutoIpServiceProvider extends ServiceProvider
         });
 
         Server::deleted(function (Server $server) {
+            $this->restoreAlias((int) $server->id, (int) $server->allocation_id);
             $this->dns()->remove((int) $server->id);
         });
     }
@@ -99,12 +102,84 @@ class AutoIpServiceProvider extends ServiceProvider
         if (!$server) {
             return ['ok' => false, 'error' => 'server not found'];
         }
-        $result = $this->dns()->register(self::serverData($server));
+        $data = self::serverData($server);
+        $original = $this->originalAlias($server);
+        $data['ip_alias'] = $original;
+        $result = $this->dns()->register($data);
         if (!$result['ok']) {
             Log::warning("[auto-ip-ptero] DNS for server {$server->id} ({$server->name}) not created: " . $result['error']);
+
+            return $result;
         }
+        $this->store()->setPrevAlias((int) $server->id, $original);
+        $this->showHostname($server, $result['hostname']);
 
         return $result;
+    }
+
+    /** the panel shows <hostname>:<port> instead of <ip>:<port> (allocation IP alias) */
+    public function applyAlias(int $serverId): bool
+    {
+        $server = Server::query()->with('allocation')->find($serverId);
+        $row = $this->store()->find($serverId);
+        if (!$server || !$server->allocation || !$row) {
+            return false;
+        }
+        if ($server->allocation->ip_alias === $row['hostname']) {
+            return true;
+        }
+        if ($row['prev_alias'] === null) {
+            $this->store()->setPrevAlias($serverId, $this->originalAlias($server));
+        }
+        $this->showHostname($server, $row['hostname']);
+
+        return true;
+    }
+
+    private function showHostname(Server $server, string $hostname): void
+    {
+        if ($server->allocation_id) {
+            Allocation::query()->where('id', $server->allocation_id)->update(['ip_alias' => $hostname]);
+        }
+    }
+
+    /** put the allocation's own alias back (server deleted / renamed) */
+    private function restoreAlias(int $serverId, ?int $allocationId = null): void
+    {
+        try {
+            $row = $this->store()->find($serverId);
+            if (!$row) {
+                return;
+            }
+            $allocationId = $allocationId ?: (int) (Server::query()->whereKey($serverId)->value('allocation_id') ?? 0);
+            if ($allocationId) {
+                Allocation::query()->where('id', $allocationId)->where('ip_alias', $row['hostname'])
+                    ->update(['ip_alias' => ($row['prev_alias'] ?? '') !== '' ? $row['prev_alias'] : null]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[auto-ip-ptero] ' . $e->getMessage());
+        }
+    }
+
+    /** alias the allocation had before we replaced it with the hostname */
+    private function originalAlias(Server $server): string
+    {
+        $alias = (string) ($server->allocation->ip_alias ?? '');
+        $row = $this->store()->find((int) $server->id);
+        if ($row && $alias === $row['hostname']) {
+            return (string) ($row['prev_alias'] ?? '');
+        }
+        $zone = $this->dns()->config()['zone_name'];
+        if ($zone !== '' && str_ends_with(strtolower($alias), '.' . strtolower($zone))) {
+            return ''; // one of our own hostnames - never point DNS at itself
+        }
+
+        return $alias;
+    }
+
+    private function store(): RecordStore
+    {
+        return new RecordStore();
     }
 
     public static function serverData(Server $server): array

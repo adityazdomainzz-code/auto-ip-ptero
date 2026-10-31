@@ -31,6 +31,7 @@
                 @endif
                 <p class="text-muted small" style="margin-bottom:0">
                     If a name is already used, the server is <strong>not created</strong> and the panel shows "Server name already exists".
+                    The panel shows the address (e.g. <code>survival-smp.{{ $config['zone_name'] ?: 'your-domain' }}:25565</code>) instead of the IP.
                     Renaming a server moves its address, deleting a server removes its records. Records are DNS-only (grey cloud) because game traffic cannot pass the Cloudflare proxy.
                 </p>
             </div>
@@ -120,11 +121,13 @@
         <div class="box">
             <div class="box-header with-border">
                 <h3 class="box-title">Server addresses ({{ count($records) }})</h3>
-                @if($active && $missing > 0)
+                @if($active)
                     <div class="box-tools">
                         <form action="{{ route('admin.autoip.sync') }}" method="POST" style="display:inline">
                             {!! csrf_field() !!}
-                            <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-refresh"></i> Create for {{ $missing }} existing server(s)</button>
+                            <button type="submit" class="btn btn-sm btn-primary" title="Creates addresses for servers made before this was set up, and shows the address instead of the IP in the panel for all servers">
+                                <i class="fa fa-refresh"></i> Apply to all existing servers @if($missing > 0)({{ $missing }} without address)@endif
+                            </button>
                         </form>
                     </div>
                 @endif

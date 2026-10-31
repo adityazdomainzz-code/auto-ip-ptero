@@ -21,6 +21,7 @@ class RecordStore
             'hostname' => $row->hostname,
             'zone_id' => $row->zone_id,
             'record_ids' => json_decode($row->record_ids, true) ?: [],
+            'prev_alias' => property_exists($row, 'prev_alias') ? $row->prev_alias : null,
         ];
     }
 
@@ -41,6 +42,11 @@ class RecordStore
             ['server_id' => $serverId],
             ['hostname' => $hostname, 'zone_id' => $zoneId, 'record_ids' => json_encode(array_values($ids)), 'updated_at' => now(), 'created_at' => now()]
         );
+    }
+
+    public function setPrevAlias(int $serverId, ?string $alias): void
+    {
+        DB::table(self::TABLE)->where('server_id', $serverId)->update(['prev_alias' => $alias ?? '']);
     }
 
     public function delete(int $serverId): void
